@@ -146,8 +146,11 @@ for i in range(minAF-1,maxAF+1): # M+1 to pick up all chromosomes (0-based to 1-
             else:
                 Thetahat[x][j][i]=(sum(RAS[x][j][i])/sum(mj[x][j][i]))
             for c in range(NumBins):
-                # Thetaminus[j][i][c]=(sum(RAS[j][i]) - RAS[j][i][c]) / (sum(lengths) - lengths[c])
-                Thetaminus[x][j][i][c]=(sum(RAS[x][j][i]) - RAS[x][j][i][c]) / (sum(mj[x][j][i]) - mj[x][j][i][c])
+                if mj[x][j][i][c] == sum(mj[x][j][i]):
+                    Thetaminus[x][j][i][c]=0
+                else:
+                    # Thetaminus[j][i][c]=(sum(RAS[j][i]) - RAS[j][i][c]) / (sum(lengths) - lengths[c])
+                    Thetaminus[x][j][i][c]=(sum(RAS[x][j][i]) - RAS[x][j][i][c]) / (sum(mj[x][j][i]) - mj[x][j][i][c])
 
 ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
 for i in range(minAF-1,maxAF+1): # M+1 to pick up all chromosomes (0-based to 1-based). mAF-1 to get the Thetas for the Sum of AFs too.
