@@ -15,7 +15,10 @@ class FreqSumParser:
     def __next__(self):
         line = next(self.handle)
         fields=line.strip().split()
-        Chrom=int(fields[0])-1 #Convert Chromosome numbering to 0-based)
+        if fields[0][0:3] == "chr":
+            Chrom = int(fields[0][3:])-1 #ignore "chr" if in start of chromosome name
+        else
+            Chrom=int(fields[0])-1 #Convert Chromosome numbering to 0-based)
         Pos=int(fields[1])
         Ref=fields[2]
         Alt=fields[3]
