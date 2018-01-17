@@ -78,9 +78,9 @@ LeftPops = args.LeftPops.split(",") #Holds the NAMES of the Left pops
 RightPops = args.RightPops.split(",") if args.RightPops != None else [n for n in freqSumParser.popNames if n not in LeftPops] #Holds the NAMES of the Right pops
 
 for x in LeftPops:
-    assert (x in freqSumParser.popNames), "{} not found in FreqSum".format(x)
+    assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
 for x in RightPops:
-    assert (x in freqSumParser.popNames), "{} not found in FreqSum".format(x)
+    assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
 
 RAS = [[[[0 for i in range(NumBins)] for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
 mj = [[[[0 for i in range(NumBins)] for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
