@@ -3,43 +3,53 @@
 import sys, argparse, re
 from math import sqrt
 from time import strftime
+import RASUtils as ras
 
-class FreqSumParser:
-    def __init__(self, filehandle):
-        self.handle = filehandle
-        self.__readHeader()
-    
-    def __iter__(self):
-        return self
-    
-    def __next__(self):
-        line = next(self.handle)
-        fields=line.strip().split()
-        if fields[0][0:3] == "chr":
-            Chrom = int(fields[0][3:])-1 #ignore "chr" if in start of chromosome name
-        else
-            Chrom=int(fields[0])-1 #Convert Chromosome numbering to 0-based)
-        Pos=int(fields[1])
-        Ref=fields[2]
-        Alt=fields[3]
-        AlleleFreqs = [int(x) for x in fields[4:]]
-        afDict = dict(zip(self.popNames, AlleleFreqs))
-        return (Chrom, Pos, Ref, Alt, afDict)
-        
-    def __readHeader(self):
-        line = next(self.handle)
-        fields=line.strip().split()
-        self.sizes = {}
-        self.popNames = []
-        Pops=fields[4:]
-        for p in Pops:
-            splitPopName = re.split('[(|)]', p)
-            popName = splitPopName[0]
-            self.popNames.append(popName)
-            popSize = int(splitPopName[1])
-            self.sizes[popName] = popSize
-        print("#Available populations in Input File and their respective sizes: ", self.sizes, file=args.Output)
-    
+# class FreqSumParser:
+#     def __init__(self, filehandle):
+#         self.handle = filehandle
+#         self.__readHeader()
+#
+#     def __iter__(self):
+#         return self
+#
+#     def __next__(self):
+#         # while(True):
+#         line = next(self.handle)
+#         fields=line.strip().split()
+#         if fields[0][0:3] == "chr":
+#             Chrom = int(fields[0][3:])-1 #ignore "chr" if in start of chromosome name
+#         else
+#             Chrom=int(fields[0])-1 #Convert Chromosome numbering to 0-based)
+#         Pos=int(fields[1])
+#         Ref=fields[2]
+#         Alt=fields[3]
+#         AlleleFreqs = [int(x) for x in fields[4:]]
+#         afDict = dict(zip(self.popNames, AlleleFreqs))
+#         # if self.noTransitions and ...isTransition...:
+#         #     continue
+#         return (Chrom, Pos, Ref, Alt, afDict)
+#
+#     def __readHeader(self):
+#         line = next(self.handle)
+#         fields=line.strip().split()
+#         self.sizes = {}
+#         self.popNames = []
+#         Pops=fields[4:]
+#         for p in Pops:
+#             splitPopName = re.split('[(|)]', p)
+#             popName = splitPopName[0]
+#             self.popNames.append(popName)
+#             popSize = int(splitPopName[1])
+#             self.sizes[popName] = popSize
+#         print("#Available populations in Input File and their respective sizes: ", self.sizes, file=args.Output)
+#
+  
+  
+# def getJackknife(blockValues, blockSizes):
+#     ...return (jackknifeEstimator, jackknifeStdErr)
+
+  
 ########## MAIN ############
 
 parser = argparse.ArgumentParser(description="Extract the frequency of shared rare variants between each left population and all right populations from a freqsum file. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
@@ -76,7 +86,7 @@ Transitions = {"A":"G", "G":"A","C":"T","T":"C"}
 # if args.LeftPops!=None:
 #     Lefts.append(LeftPops)
 
-freqSumParser = FreqSumParser(args.Input)
+freqSumParser = ras.FreqSumParser(args.Input, args.Output)
 LeftPops = args.LeftPops.split(",") #Holds the NAMES of the Left pops
 RightPops = args.RightPops.split(",") if args.RightPops != None else [n for n in freqSumParser.popNames if n not in LeftPops] #Holds the NAMES of the Right pops
 
@@ -131,47 +141,69 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                 mj[Lftidx][Rgtidx][minAF-1][Chrom]+=1 #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
 
 #Jackknifing
-Thetahat = [[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-Thetaminus=[[[[0 for c in range(NumBins)] for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-for i in range(minAF-1,maxAF+1): # M+1 to pick up all chromosomes (0-based to 1-based). 
-    for x in range(len(LeftPops)):
-        for j in range(len(RightPops)):
-            if sum(mj[x][j][i])==0:
-                Thetahat[x][j][i]=0
-            else:
-                Thetahat[x][j][i]=(sum(RAS[x][j][i])/sum(mj[x][j][i]))
-            for c in range(NumBins):
-                if mj[x][j][i][c] == sum(mj[x][j][i]):
-                    Thetaminus[x][j][i][c]=0
-                else:
-                    # Thetaminus[j][i][c]=(sum(RAS[j][i]) - RAS[j][i][c]) / (sum(lengths) - lengths[c])
-                    Thetaminus[x][j][i][c]=(sum(RAS[x][j][i]) - RAS[x][j][i][c]) / (sum(mj[x][j][i]) - mj[x][j][i][c])
-
 ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-for i in range(minAF-1,maxAF+1): # M+1 to pick up all chromosomes (0-based to 1-based). mAF-1 to get the Thetas for the Sum of AFs too.
-    for x in range(len(LeftPops)): 
-        for j in range(len(RightPops)):
-            Sum1=0
-            Sum2=0
-            for c in range(NumBins):
-                Sum1+=Thetahat[x][j][i]-Thetaminus[x][j][i][c]
-                if sum(mj[x][j][i]) >0:
-                    Sum2+=((mj[x][j][i][c] * Thetaminus[x][j][i][c])/sum(mj[x][j][i]))
-            ThetaJ[x][j][i]=Sum1+Sum2
-
 Sigma2=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-for i in range(minAF-1,maxAF+1): # M+1 to pick up all chromosomes (0-based to 1-based). mAF-1 to get the Thetas for the Sum of AFs too.
+for i in range(minAF-1,maxAF+1):
     for x in range(len(LeftPops)):
         for j in range(len(RightPops)):
-            for c in range(NumBins):
-                if mj[x][j][i][c]==0:
-                    pseudovalue=Thetahat[x][j][i]
-                    Sigma2[x][j][i]+=0
-                else:
-                    hj=sum(mj[x][j][i])/mj[x][j][i][c]
-                    pseudovalue=(hj*Thetahat[x][j][i])-((hj-1) * Thetaminus[x][j][i][c])
-                    Sigma2[x][j][i]+=(((pseudovalue-ThetaJ[x][j][i])**2)/(hj-1))/NumBins
+            thetaJ,sigma2=ras.getJackknife(RAS[x][j][i],mj[x][j][i])
+            ThetaJ[x][j][i]=thetaJ
+            Sigma2[x][j][i]=sigma2
 
+# ThetaJ = [[[getJackknife(RAS[leftIdx][rightIdx][af], mj[leftIdx][rightIdx][af])[0] for af in ...] for rightIdx in ...] for leftIdx in ...]
+# Sigma2 = [[[getJackknife(RAS[leftIdx][rightIdx][af], mj[leftIdx][rightIdx][af])[1] for af in ...] for rightIdx in ...] for leftIdx in ...]
+# alternative:
+# ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# Sigma2=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# for ...
+#     for ...
+#         for ...
+#             thetaJ, sigma2 = getJackknife(...)
+#             ThetaJ[][][] = thetaJ
+#             Sigma2[][][] = sigma2
+#
+
+# Thetahat = [[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# Thetaminus=[[[[0 for c in range(NumBins)] for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# for i in range(minAF-1,maxAF+1): # M+1 to pick up all frequencies (0-based to 1-based).
+#     for x in range(len(LeftPops)):
+#         for j in range(len(RightPops)):
+#             if sum(mj[x][j][i])==0:
+#                 Thetahat[x][j][i]=0
+#             else:
+#                 Thetahat[x][j][i]=(sum(RAS[x][j][i])/sum(mj[x][j][i]))
+#             for c in range(NumBins):
+#                 if mj[x][j][i][c] == sum(mj[x][j][i]):
+#                     Thetaminus[x][j][i][c]=0
+#                 else:
+#                     # Thetaminus[j][i][c]=(sum(RAS[j][i]) - RAS[j][i][c]) / (sum(lengths) - lengths[c])
+#                     Thetaminus[x][j][i][c]=(sum(RAS[x][j][i]) - RAS[x][j][i][c]) / (sum(mj[x][j][i]) - mj[x][j][i][c])
+#
+# ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# for i in range(minAF-1,maxAF+1): # M+1 to pick up all chromosomes (0-based to 1-based). mAF-1 to get the Thetas for the Sum of AFs too.
+#     for x in range(len(LeftPops)):
+#         for j in range(len(RightPops)):
+#             Sum1=0
+#             Sum2=0
+#             for c in range(NumBins):
+#                 Sum1+=Thetahat[x][j][i]-Thetaminus[x][j][i][c]
+#                 if sum(mj[x][j][i]) >0:
+#                     Sum2+=((mj[x][j][i][c] * Thetaminus[x][j][i][c])/sum(mj[x][j][i]))
+#             ThetaJ[x][j][i]=Sum1+Sum2
+#
+# Sigma2=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# for i in range(minAF-1,maxAF+1): # M+1 to pick up all chromosomes (0-based to 1-based). mAF-1 to get the Thetas for the Sum of AFs too.
+#     for x in range(len(LeftPops)):
+#         for j in range(len(RightPops)):
+#             for c in range(NumBins):
+#                 if mj[x][j][i][c]==0:
+#                     pseudovalue=Thetahat[x][j][i]
+#                     Sigma2[x][j][i]+=0
+#                 else:
+#                     hj=sum(mj[x][j][i])/mj[x][j][i][c]
+#                     pseudovalue=(hj*Thetahat[x][j][i])-((hj-1) * Thetaminus[x][j][i][c])
+#                     Sigma2[x][j][i]+=(((pseudovalue-ThetaJ[x][j][i])**2)/(hj-1))/NumBins
+#
 # print ("#FREQSUM POPULATIONS & SIZES:",*Pops, file=args.Output, sep=" ", end="\n")
 print ("#Left Populations: ", *LeftPops, sep=" ", file=args.Output, end="\n")
 print ("#Populations considered for allele frequency calculation (Rights):", *RightPops, file=args.Output, sep="\t", end="\n")
@@ -181,9 +213,9 @@ for leftidx, leftPop in enumerate(LeftPops):
     for rightidx, rightPop in enumerate(RightPops):
         if args.details:
             for m in range(minAF,maxAF+1):
-                print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx][m])), "{:.15e}".format(Thetahat[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),m, sep="\t", file=args.Output)
+                print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx][m])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),m, sep="\t", file=args.Output)
         m=minAF-1
-        print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx][m])), "{:.15e}".format(Thetahat[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),"Total [{},{}]".format(minAF,maxAF), sep="\t", file=args.Output)
+        print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx][m])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),"Total [{},{}]".format(minAF,maxAF), sep="\t", file=args.Output)
         #print ("", file=args.Output)
 
 print ("Program finished running at:", strftime("%D %H:%M:%S"), file=sys.stderr)
