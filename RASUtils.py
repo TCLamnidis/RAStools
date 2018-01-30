@@ -63,4 +63,4 @@ def getJackknife(blockValues, blockSizes):
             hj=sum(blockSizes)/blockSizes[c]
             pseudoval=(hj*thetahat)-((hj-1)*thetaminus[c])
             jackknifeStdErr+=(1/len(blockSizes))*(((pseudoval-jackknifeEstimator)**2)/(hj-1))
-        return (jackknifeEstimator,jackknifeStdErr)
+    return (jackknifeEstimator,jackknifeStdErr)
