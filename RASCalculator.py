@@ -5,45 +5,6 @@ from math import sqrt
 from time import strftime
 import RASUtils as ras
 
-<<<<<<< HEAD
-class FreqSumParser:
-    def __init__(self, filehandle):
-        self.handle = filehandle
-        self.__readHeader()
-    
-    def __iter__(self):
-        return self
-    
-    def __next__(self):
-        line = next(self.handle)
-        fields=line.strip().split()
-        if fields[0][0:3] == "chr":
-            Chrom = int(fields[0][3:])-1 #ignore "chr" if in start of chromosome name
-        else:
-            Chrom=int(fields[0])-1 #Convert Chromosome numbering to 0-based)
-        Pos=int(fields[1])
-        Ref=fields[2]
-        Alt=fields[3]
-        AlleleFreqs = [int(x) for x in fields[4:]]
-        afDict = dict(zip(self.popNames, AlleleFreqs))
-        return (Chrom, Pos, Ref, Alt, afDict)
-        
-    def __readHeader(self):
-        line = next(self.handle)
-        fields=line.strip().split()
-        self.sizes = {}
-        self.popNames = []
-        Pops=fields[4:]
-        for p in Pops:
-            splitPopName = re.split('[(|)]', p)
-            popName = splitPopName[0]
-            self.popNames.append(popName)
-            popSize = int(splitPopName[1])
-            self.sizes[popName] = popSize
-        print("#Available populations in Input File and their respective sizes: ", self.sizes, file=args.Output)
-    
-=======
->>>>>>> v2.0
 ########## MAIN ############
 
 parser = argparse.ArgumentParser(description="Extract the frequency of shared rare variants between each left population and all right populations from a freqsum file. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
