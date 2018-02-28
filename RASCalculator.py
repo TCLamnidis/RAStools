@@ -46,7 +46,6 @@ Transitions = {"A":"G", "G":"A","C":"T","T":"C"}
 freqSumParser = ras.FreqSumParser(args.Input, args.Output)
 LeftPops = args.LeftPops.split(",") #Holds the NAMES of the Left pops
 RightPops = args.RightPops.split(",") if args.RightPops != None else [n for n in freqSumParser.popNames if n not in LeftPops] #Holds the NAMES of the Right pops
-Focal = args.FocalPop
 
 # if Focal != None:
 #     assert (Focal in freqSumParser.popNames), "Focal population '{}' not found in FreqSum".format(Focal)
