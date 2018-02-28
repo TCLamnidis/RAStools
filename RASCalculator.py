@@ -10,11 +10,12 @@ import RASUtils as ras
 parser = argparse.ArgumentParser(description="Extract the frequency of shared rare variants between each left population and all right populations from a freqsum file. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
 parser.add_argument("-I", "--Input", metavar="<INPUT FILE>", type=argparse.FileType('r'), help="The input freqsum file. Omit to read from stdin.", required=False)
 parser.add_argument("-O", "--Output", metavar="<OUTPUT FILE>", type=argparse.FileType('w'), help="The output file. Omit to print in stdout.")
+# parser.add_argument("-F", "--FocalPop", metavar="POP", type=str, help="The population to polarise all alleles with. Only consider non-variable positions in this population that are variable in other populations. By default the human reference is used.", required=False)
 parser.add_argument("-M", "--maxAF", metavar="<MAX ALLELE COUNT>", type=int, default=10, help="The maximum number of alleles (total) in the reference populations. The default maximum allele value is 10.", required=False)
 parser.add_argument("-m", "--minAF", metavar="<MIN ALLELE COUNT>", type=int, default=2, help="The minimum number of alleles (total) in the reference populations. The default minimum allele count is 2.", required=False)
 parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Test populations/individuals. RAS will be calculated between the Test and all Right populations.")
 parser.add_argument("-R", "--RightPops", type=str, metavar="POP1,POP2,...", required=False, help="A list of comma-separated population names that should be considered when computing the allele frequency. Consider all populations if not provided.")
-parser.add_argument("-x", "--MissingnessCutoff", type=float, metavar="<CUTOFF>", default=0.0, help="Missingness cutoff proportion for Right populations. E.g. 0.1: If more than 10% of individuals in Right populations show missing data, the variant will be ignored. [default=0]")
+parser.add_argument("-x", "--MissingnessCutoff", type=float, metavar="<CUTOFF>", default=0.0, help="Missingness cutoff proportion for Right populations. E.g. 0.1: If more than 10%% of individuals in Right populations show missing data, the variant will be ignored. [default=0]")
 parser.add_argument("-NT", "--NoTransitions", action='store_true', help="When present, No Transitions are included in the output. Useful for ancient samples with damaged DNA.")
 parser.add_argument("-P", "--Private", action='store_true', required=False, help="Restrict the RAS calculation to privately shared rare variants only.")
 parser.add_argument("-C", "--NrChroms", type=int, metavar="<INT>", default=22, required=False, help="The number of chromosomes in the dataset. [22]")
@@ -45,7 +46,10 @@ Transitions = {"A":"G", "G":"A","C":"T","T":"C"}
 freqSumParser = ras.FreqSumParser(args.Input, args.Output)
 LeftPops = args.LeftPops.split(",") #Holds the NAMES of the Left pops
 RightPops = args.RightPops.split(",") if args.RightPops != None else [n for n in freqSumParser.popNames if n not in LeftPops] #Holds the NAMES of the Right pops
+Focal = args.FocalPop
 
+# if Focal != None:
+#     assert (Focal in freqSumParser.popNames), "Focal population '{}' not found in FreqSum".format(Focal)
 for x in LeftPops:
     assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
 for x in RightPops:
@@ -60,7 +64,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
     for x in RightPops:
         if afDict[x]==-1:
             missing+=freqSumParser.sizes[x]
-    if missing/sum(freqSumParser.sizes)>=args.MissingnessCutoff:
+    if missing/sum(freqSumParser.sizes.values())>=args.MissingnessCutoff:
         continue
     #Exclude transitions if the option is given.
     if args.NoTransitions:
