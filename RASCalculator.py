@@ -64,7 +64,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
     for x in RightPops:
         if afDict[x]==-1:
             missing+=freqSumParser.sizes[x]
-    if missing/sum(freqSumParser.sizes.values())>=args.MissingnessCutoff:
+    if missing/sum(freqSumParser.sizes.values())>args.MissingnessCutoff:
         continue
     #Exclude transitions if the option is given.
     if args.NoTransitions:
