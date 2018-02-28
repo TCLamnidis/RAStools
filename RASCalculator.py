@@ -107,7 +107,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                 mj[Lftidx][Rgtidx][AfSum][Chrom]+=1
                 RAS[Lftidx][Rgtidx][minAF-1][Chrom]+=(afDict[leftPop]*(afDict[leftPop]-1))/(leftSize*(leftSize-1)) #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
                 mj[Lftidx][Rgtidx][minAF-1][Chrom]+=1 #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
-exit(0)
+
 #Jackknifing
 ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
 Sigma2=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
