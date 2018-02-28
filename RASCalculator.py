@@ -10,7 +10,7 @@ import RASUtils as ras
 parser = argparse.ArgumentParser(description="Extract the frequency of shared rare variants between each left population and all right populations from a freqsum file. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
 parser.add_argument("-I", "--Input", metavar="<INPUT FILE>", type=argparse.FileType('r'), help="The input freqsum file. Omit to read from stdin.", required=False)
 parser.add_argument("-O", "--Output", metavar="<OUTPUT FILE>", type=argparse.FileType('w'), help="The output file. Omit to print in stdout.")
-# parser.add_argument("-F", "--FocalPop", metavar="POP", type=str, help="The population to polarise all alleles with. Only consider non-variable positions in this population that are variable in other populations. By default the human reference is used.", required=False)
+parser.add_argument("-F", "--FocalPop", metavar="POP", type=str, help="The population to polarise all alleles with. Only consider non-variable positions in this population that are variable in other populations. By default the human reference is used.", required=False)
 parser.add_argument("-M", "--maxAF", metavar="<MAX ALLELE COUNT>", type=int, default=10, help="The maximum number of alleles (total) in the reference populations. The default maximum allele value is 10.", required=False)
 parser.add_argument("-m", "--minAF", metavar="<MIN ALLELE COUNT>", type=int, default=2, help="The minimum number of alleles (total) in the reference populations. The default minimum allele count is 2.", required=False)
 parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Test populations/individuals. RAS will be calculated between the Test and all Right populations.")
@@ -48,8 +48,8 @@ LeftPops = args.LeftPops.split(",") #Holds the NAMES of the Left pops
 RightPops = args.RightPops.split(",") if args.RightPops != None else [n for n in freqSumParser.popNames if n not in LeftPops] #Holds the NAMES of the Right pops
 Focal = args.FocalPop
 
-# if Focal != None:
-#     assert (Focal in freqSumParser.popNames), "Focal population '{}' not found in FreqSum".format(Focal)
+if Focal != None:
+     assert (Focal in freqSumParser.popNames), "Focal population '{}' not found in FreqSum".format(Focal)
 for x in LeftPops:
     assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
 for x in RightPops:
@@ -69,13 +69,15 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
     #Exclude transitions if the option is given.
     if args.NoTransitions:
         if Ref in Transitions and Alt == Transitions[Ref]:
-            continue 
+            continue
+    #Exclude sites that are variant in the FocalPop, when -F option given.
+    if Focal != None:
+        afDict=ras.Polarise(Focal,afDict,freqSumParser.sizes)
     AfSum=0
     #Calculate AfSum for each position
-    for pop in afDict:
-        if pop in RightPops:
-            if afDict[pop] > 0:
-                AfSum+=afDict[pop]
+    for pop in RightPops:
+        if afDict[pop] > 0:
+            AfSum+=afDict[pop]
     #Only consider sites with ascertained AF between the provided ranges.
     if AfSum > maxAF or AfSum < minAF:
         continue
@@ -105,7 +107,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                 mj[Lftidx][Rgtidx][AfSum][Chrom]+=1
                 RAS[Lftidx][Rgtidx][minAF-1][Chrom]+=(afDict[leftPop]*(afDict[leftPop]-1))/(leftSize*(leftSize-1)) #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
                 mj[Lftidx][Rgtidx][minAF-1][Chrom]+=1 #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
-
+exit(0)
 #Jackknifing
 ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
 Sigma2=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]

@@ -40,6 +40,16 @@ class FreqSumParser:
             self.sizes[popName] = popSize
         print("#Available populations in Input File and their respective sizes: ", self.sizes, file=self.output)
 
+def Polarise(Focal,afDict,sizes):
+    for i in afDict:
+        if afDict[Focal] == 0:
+            pass
+        if afDict[Focal] == sizes[Focal]:
+            afDict[i] = sizes[i]-afDict[i]
+        else:
+            afDict[i] = -1 
+    return (afDict)
+
 def getJackknife(blockValues, blockSizes):
     thetaminus=[0 for x in range(len(blockSizes))]
     sum1=0
