@@ -35,7 +35,6 @@ if args.Output == None:
 NumBins=args.NrChroms
 minAF=args.minAF
 maxAF=args.maxAF
-Transitions = {"A":"G", "G":"A","C":"T","T":"C"}
 # RightIndex={} #Holds the INDICES of the Right pops
 # LeftsIndex={} #Holds the INDICES of the Left pops
 
@@ -55,63 +54,71 @@ for x in RightPops:
     assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
 
 RAS = [[[[0 for i in range(NumBins)] for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-mj = [[[[0 for i in range(NumBins)] for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# The normalization only records a total for all allele frequencies.
+mj =  [[ [0 for i in range(NumBins)]                          for k in range(len(RightPops))] for x in range(len(LeftPops))]
 
-for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
+def getMissingness(afDict):
     missing=0
-    #Skip sites where missingness in rightpops is above specified cutoff.
     for x in RightPops:
         if afDict[x]==-1:
             missing+=freqSumParser.sizes[x]
-    if missing/sum(freqSumParser.sizes.values())>args.MissingnessCutoff:
+    return float(missing) / float(sum(freqSumParser.sizes.values()))
+
+def isTransition(ref, alt):
+    Transitions = {"A":"G", "G":"A","C":"T","T":"C"}
+    return (ref in Transitions and alt == Transitions[ref])
+
+def getTotalAF(afDict):
+    #Calculate AfSum for each position
+    AfSum = 0
+    for pop in RightPops:
+        if afDict[pop] > 0:
+            AfSum+=afDict[pop]
+    return AfSum
+
+for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
+
+    #Skip sites where missingness in rightpops is above specified cutoff.
+    missingness = getMissingness(afDict)
+    if missingness > args.MissingnessCutoff:
         continue
     #Exclude transitions if the option is given.
-    if args.NoTransitions:
-        if Ref in Transitions and Alt == Transitions[Ref]:
-            continue 
-    AfSum=0
-    #Calculate AfSum for each position
-    for pop in afDict:
-        if pop in RightPops:
-            if afDict[pop] > 0:
-                AfSum+=afDict[pop]
-    #Only consider sites with ascertained AF between the provided ranges.
-    if AfSum > maxAF or AfSum < minAF:
-        continue
+    if args.NoTransitions and isTransition(Ref, Alt):
+        continue 
+    
+    AfSum = getTotalAF(afDict)
+
     for Lftidx, leftPop in enumerate(LeftPops):
         for Rgtidx, rightPop in enumerate(RightPops):
                         
             #Only consider Privately shared sites when the --Private option is provided.
-            if args.Private:
-                if AfSum != afDict[rightPop]:
-                    continue
+            isPrivate = (AfSum == afDict[rightPop])
             leftSize=freqSumParser.sizes[leftPop]
             rightSize=freqSumParser.sizes[rightPop]
-            #For now we will assume that Rights cannot have missing data, since they are grouped. RAS calculation with some missingness in rights will come once we start grouping individuals in populations internally.
-            # if afDict[rightPop] == -1:
-            #     rightSize-=2
             
-            #Case where right and left pops are different
-            if afDict[leftPop] >= 0 and afDict[rightPop] >= 0 and leftPop != rightPop:
-                RAS[Lftidx][Rgtidx][AfSum][Chrom]+=(afDict[leftPop]*afDict[rightPop])/(leftSize*rightSize)
-                mj[Lftidx][Rgtidx][AfSum][Chrom]+=1
-                RAS[Lftidx][Rgtidx][minAF-1][Chrom]+=(afDict[leftPop]*afDict[rightPop])/(leftSize*rightSize) #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
-                mj[Lftidx][Rgtidx][minAF-1][Chrom]+=1 #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
-                
-            #Case where left pop is also right pop (within population)
-            elif afDict[leftPop] >= 0 and afDict[rightPop] >= 0 and leftPop == rightPop:
-                RAS[Lftidx][Rgtidx][AfSum][Chrom]+=(afDict[leftPop]*(afDict[leftPop]-1))/(leftSize*(leftSize-1))
-                mj[Lftidx][Rgtidx][AfSum][Chrom]+=1
-                RAS[Lftidx][Rgtidx][minAF-1][Chrom]+=(afDict[leftPop]*(afDict[leftPop]-1))/(leftSize*(leftSize-1)) #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
-                mj[Lftidx][Rgtidx][minAF-1][Chrom]+=1 #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
+            if afDict[leftPop] >= 0 and afDict[rightPop] >= 0:
+                mj[Lftidx][Rgtidx][Chrom] += 1
+                if AfSum >= minAF and AfSum >= maxAF and (not args.Private or isPrivate):
+                    #Only consider sites with ascertained AF between the provided ranges.
+                    if leftPop != rightPop:
+                        #Case where right and left pops are different
+                        add = (afDict[leftPop] * afDict[rightPop]) / (leftSize * rightSize)
+                        RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
+                        #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
+                        RAS[Lftidx][Rgtidx][minAF-1][Chrom] += add
+                    else:
+                    #Case where left pop is also right pop (within population)
+                        add = (afDict[leftPop] * (afDict[leftPop]-1)) / (leftSize * (leftSize-1))
+                        RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
+                        RAS[Lftidx][Rgtidx][minAF-1][Chrom] += add
 
 #Jackknifing
 ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
 Sigma2=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-for i in range(minAF-1,maxAF+1):
-    for x in range(len(LeftPops)):
-        for j in range(len(RightPops)):
-            thetaJ,sigma2=ras.getJackknife(RAS[x][j][i],mj[x][j][i])
+for x in range(len(LeftPops)):
+    for j in range(len(RightPops)):
+        for i in range(minAF-1,maxAF+1):
+            thetaJ,sigma2=ras.getJackknife(RAS[x][j][i],mj[x][j])
             ThetaJ[x][j][i]=thetaJ
             Sigma2[x][j][i]=sigma2
 
@@ -124,9 +131,9 @@ for leftidx, leftPop in enumerate(LeftPops):
     for rightidx, rightPop in enumerate(RightPops):
         if args.details:
             for m in range(minAF,maxAF+1):
-                print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx][m])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),m, sep="\t", file=args.Output)
+                print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),m, sep="\t", file=args.Output)
         m=minAF-1
-        print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx][m])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),"Total [{},{}]".format(minAF,maxAF), sep="\t", file=args.Output)
+        print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),"Total [{},{}]".format(minAF,maxAF), sep="\t", file=args.Output)
         #print ("", file=args.Output)
 
 print ("Program finished running at:", strftime("%D %H:%M:%S"), file=sys.stderr)
