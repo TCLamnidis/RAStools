@@ -98,7 +98,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
             
             if afDict[leftPop] >= 0 and afDict[rightPop] >= 0:
                 mj[Lftidx][Rgtidx][Chrom] += 1
-                if AfSum >= minAF and AfSum >= maxAF and (not args.Private or isPrivate):
+                if AfSum >= minAF and AfSum <= maxAF and (not args.Private or isPrivate):
                     #Only consider sites with ascertained AF between the provided ranges.
                     if leftPop != rightPop:
                         #Case where right and left pops are different
