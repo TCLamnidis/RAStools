@@ -7,10 +7,10 @@ import RASUtils as ras
 
 ########## MAIN ############
 
-parser = argparse.ArgumentParser(description="Extract the frequency of shared rare variants between each left population and all right populations from a freqsum file. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
+parser = argparse.ArgumentParser(description="Compute rare allele sharing statistics between two populations with respect to an outgroup, as well as outgroup F3 statistics. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
 parser.add_argument("-I", "--Input", metavar="<INPUT FILE>", type=argparse.FileType('r'), help="The input freqsum file. Omit to read from stdin.", required=False)
 parser.add_argument("-O", "--Output", metavar="<OUTPUT FILE>", type=argparse.FileType('w'), help="The output file. Omit to print in stdout.")
-# parser.add_argument("-F", "--FocalPop", metavar="POP", type=str, help="The population to polarise all alleles with. Only consider non-variable positions in this population that are variable in other populations. By default the human reference is used.", required=False)
+parser.add_argument("-o", "--outgroup", metavar="POP", type=str, help="The outgroup population to polarise all alleles with. By default the human reference is used (not recommended, only for backwards compatibility). Note that this normally should be a population within the Right Populations", required=False)
 parser.add_argument("-M", "--maxAF", metavar="<MAX ALLELE COUNT>", type=int, default=10, help="The maximum number of alleles (total) in the reference populations. The default maximum allele value is 10.", required=False)
 parser.add_argument("-m", "--minAF", metavar="<MIN ALLELE COUNT>", type=int, default=2, help="The minimum number of alleles (total) in the reference populations. The default minimum allele count is 2.", required=False)
 parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Test populations/individuals. RAS will be calculated between the Test and all Right populations.")
@@ -53,10 +53,6 @@ for x in LeftPops:
 for x in RightPops:
     assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
 
-RAS = [[[[0 for i in range(NumBins)] for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-# The normalization only records a total for all allele frequencies.
-mj =  [[ [0 for i in range(NumBins)]                          for k in range(len(RightPops))] for x in range(len(LeftPops))]
-
 def getMissingness(afDict):
     missing=0
     for x in RightPops:
@@ -68,13 +64,24 @@ def isTransition(ref, alt):
     Transitions = {"A":"G", "G":"A","C":"T","T":"C"}
     return (ref in Transitions and alt == Transitions[ref])
 
-def getTotalAF(afDict):
+def getTotalMinorAF(afDict):
     #Calculate AfSum for each position
-    AfSum = 0
+    NonRefAfSum = 0
+    TotalCount = 0
     for pop in RightPops:
         if afDict[pop] > 0:
-            AfSum+=afDict[pop]
-    return AfSum
+            NonRefAfSum += afDict[pop]
+            TotalCount += freqSumParser.sizes[pop]
+    outgroupFreq = 0.0 if args.outgroup == None else afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
+    minorAfSum = NonRefAfSum if outgroupFreq < 0.5 else TotalCount - NonRefAfSum
+    return minorAfSum
+
+# Bin minAf - 1: Total rare allele sharing
+# Bins minAf -> maxAf: Rare Allele sharing per allele count
+# Bin maxAf + 1: Outgroup F3 stats
+RAS = [[[[0 for i in range(NumBins)] for j in range(maxAF+2)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+# The normalization only records a total for all allele frequencies.
+mj =  [[ [0 for i in range(NumBins)]                          for k in range(len(RightPops))] for x in range(len(LeftPops))]
 
 for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
 
@@ -86,7 +93,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
     if args.NoTransitions and isTransition(Ref, Alt):
         continue 
     
-    AfSum = getTotalAF(afDict)
+    AfSum = getTotalMinorAF(afDict)
 
     for Lftidx, leftPop in enumerate(LeftPops):
         for Rgtidx, rightPop in enumerate(RightPops):
@@ -98,26 +105,23 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
             
             if afDict[leftPop] >= 0 and afDict[rightPop] >= 0:
                 mj[Lftidx][Rgtidx][Chrom] += 1
+                xLeft = afDict[leftPop] / leftSize
+                xRight = afDict[rightPop] / rightSize
+                xOutgroup = 0.0 if args.outgroup == None else afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
+                add = (xLeft - xOutgroup) * (xRight - xOutgroup)
+                RAS[Lftidx][Rgtidx][maxAf+1][Chrom] += add # For Outgroup F3 Stats
                 if AfSum >= minAF and AfSum <= maxAF and (not args.Private or isPrivate):
-                    #Only consider sites with ascertained AF between the provided ranges.
-                    if leftPop != rightPop:
-                        #Case where right and left pops are different
-                        add = (afDict[leftPop] * afDict[rightPop]) / (leftSize * rightSize)
-                        RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
-                        #within "minAF-1" we store total RAS and observed sites, for Jackknife estimations on the totals.
-                        RAS[Lftidx][Rgtidx][minAF-1][Chrom] += add
-                    else:
-                    #Case where left pop is also right pop (within population)
-                        add = (afDict[leftPop] * (afDict[leftPop]-1)) / (leftSize * (leftSize-1))
-                        RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
-                        RAS[Lftidx][Rgtidx][minAF-1][Chrom] += add
+                    #Only consider sites with ascertained minor AF between the provided ranges.
+                    RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
+                    #within "minAF-1" we store total Rare allele sharing.
+                    RAS[Lftidx][Rgtidx][minAF-1][Chrom] += add
 
 #Jackknifing
-ThetaJ=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
-Sigma2=[[[0 for j in range(maxAF+1)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+ThetaJ=[[[0 for j in range(maxAF+2)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
+Sigma2=[[[0 for j in range(maxAF+2)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
 for x in range(len(LeftPops)):
     for j in range(len(RightPops)):
-        for i in range(minAF-1,maxAF+1):
+        for i in range(minAF-1,maxAF+2):
             thetaJ,sigma2=ras.getJackknife(RAS[x][j][i],mj[x][j])
             ThetaJ[x][j][i]=thetaJ
             Sigma2[x][j][i]=sigma2
@@ -134,6 +138,8 @@ for leftidx, leftPop in enumerate(LeftPops):
                 print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),m, sep="\t", file=args.Output)
         m=minAF-1
         print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),"Total [{},{}]".format(minAF,maxAF), sep="\t", file=args.Output)
+        m=maxAF+1
+        print (rightPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][rightidx][m]))), "{:.15e}".format(sum(mj[leftidx][rightidx])), "{:.15e}".format(ThetaJ[leftidx][rightidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][rightidx][m])),"Outgroup F3", sep="\t", file=args.Output)
         #print ("", file=args.Output)
 
 print ("Program finished running at:", strftime("%D %H:%M:%S"), file=sys.stderr)
