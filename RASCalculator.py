@@ -76,16 +76,20 @@ def getTotalMinorAF(afDict):
     minorAfSum = NonRefAfSum if outgroupFreq < 0.5 else TotalCount - NonRefAfSum
     return minorAfSum
 
-# Bin minAf - 1: Total rare allele sharing
-# Bins minAf -> maxAf: Rare Allele sharing per allele count
-# Bin maxAf + 1: Outgroup F3 stats
+# Bin minAF - 1: Total rare allele sharing
+# Bins minAF -> maxAF: Rare Allele sharing per allele count
+# Bin maxAF + 1: Outgroup F3 stats
 RAS = [[[[0 for i in range(NumBins)] for j in range(maxAF+2)] for k in range(len(RightPops))] for x in range(len(LeftPops))]
 # The normalization only records a total for all allele frequencies.
 mj =  [[ [0 for i in range(NumBins)]                          for k in range(len(RightPops))] for x in range(len(LeftPops))]
 
+lineCount = 0
 for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
 
     #Skip sites where missingness in rightpops is above specified cutoff.
+    lineCount += 1
+    if lineCount % 10000 == 0:
+        print("processing position {}:{}".format(Chrom + 1, Pos), file=sys.stderr)
     missingness = getMissingness(afDict)
     if missingness > args.MissingnessCutoff:
         continue
@@ -109,7 +113,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                 xRight = afDict[rightPop] / rightSize
                 xOutgroup = 0.0 if args.outgroup == None else afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
                 add = (xLeft - xOutgroup) * (xRight - xOutgroup)
-                RAS[Lftidx][Rgtidx][maxAf+1][Chrom] += add # For Outgroup F3 Stats
+                RAS[Lftidx][Rgtidx][maxAF+1][Chrom] += add # For Outgroup F3 Stats
                 if AfSum >= minAF and AfSum <= maxAF and (not args.Private or isPrivate):
                     #Only consider sites with ascertained minor AF between the provided ranges.
                     RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
