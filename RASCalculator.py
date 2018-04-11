@@ -49,9 +49,9 @@ RightPops = args.RightPops.split(",") if args.RightPops != None else [n for n in
 # if Focal != None:
 #     assert (Focal in freqSumParser.popNames), "Focal population '{}' not found in FreqSum".format(Focal)
 for x in LeftPops:
-    assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
+    assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
 for x in RightPops:
-    assert (x in freqSumParser.popNames), "Population '{}' not found in FreqSum".format(x)
+    assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
 
 def getMissingness(afDict):
     missing=0
@@ -115,6 +115,10 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                 add = (xLeft - xOutgroup) * (xRight - xOutgroup)
                 RAS[Lftidx][Rgtidx][maxAF+1][Chrom] += add # For Outgroup F3 Stats
                 if AfSum >= minAF and AfSum <= maxAF and (not args.Private or isPrivate):
+                    
+                    # For rare allele sharing, we are rounding the outgroup to 1 or 0, since we noticed that sequencing errors and spurious DNA damage can cause negative ras statistics when the same formula is used as for F3 stats. To see this, consider the following case: xOutgroup > 0, xLeft = 1 (sequencing error or DNA damage), rRight = 0. Then add < 0 and in some cases the entire statistics will be zero. For F3 stats, this effect will average out, but for low frequency RAS the total effect can systematically shift the statistics towards negative numbers.
+                    
+                    add = xLeft * xRight if xOutgroup < 0.5 else (1.0 - xLeft) * (1.0 - xRight)
                     #Only consider sites with ascertained minor AF between the provided ranges.
                     RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
                     #within "minAF-1" we store total Rare allele sharing.
