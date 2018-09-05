@@ -52,8 +52,7 @@ for x in LeftPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
 for x in RightPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
-assert (args.outgroup in freqSumParser.popNames),
-    "Population {} not found in FreqSum".format(args.outgroup)
+assert (args.outgroup in freqSumParser.popNames), "Population {} not found in FreqSum".format(args.outgroup)
 
 def getMissingness(afDict):
     missing = 0
