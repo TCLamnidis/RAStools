@@ -112,7 +112,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
         for Rgtidx, rightPop in enumerate(RightPops):
                         
             #Only consider Privately shared sites when the --Private option is provided.
-            isPrivate = (nonRefAC == afDict[rightPop])
+            isPrivate = (derivedAC == afDict[rightPop])
             leftSize = freqSumParser.sizes[leftPop]
             rightSize = freqSumParser.sizes[rightPop]
             
