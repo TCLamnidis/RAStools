@@ -10,7 +10,7 @@ import RASUtils as ras
 parser = argparse.ArgumentParser(description="Compute rare allele sharing statistics between two populations with respect to an outgroup, as well as outgroup F3 statistics. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
 parser.add_argument("-I", "--Input", metavar="<INPUT FILE>", type=argparse.FileType('r'), help="The input freqsum file. Omit to read from stdin.", required=False)
 parser.add_argument("-O", "--Output", metavar="<OUTPUT FILE>", type=argparse.FileType('w'), help="The output file. Omit to print in stdout.")
-parser.add_argument("-o", "--outgroup", metavar="POP", type=str, help="The outgroup population to polarise all alleles with. By default the human reference is used (not recommended, only for backwards compatibility). Note that this normally should be a population within the Right Populations", required=False)
+parser.add_argument("-o", "--outgroup", metavar="POP", type=str, help="The outgroup to polarize all alleles with. As a useful standard choice, use Chimp as outgroup", required=True)
 parser.add_argument("-M", "--maxAF", metavar="<MAX ALLELE COUNT>", type=int, default=10, help="The maximum number of alleles (total) in the reference populations. The default maximum allele value is 10.", required=False)
 parser.add_argument("-m", "--minAF", metavar="<MIN ALLELE COUNT>", type=int, default=2, help="The minimum number of alleles (total) in the reference populations. The default minimum allele count is 2.", required=False)
 parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Test populations/individuals. RAS will be calculated between the Test and all Right populations.")
@@ -52,29 +52,36 @@ for x in LeftPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
 for x in RightPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
+assert (args.outgroup in freqSumParser.popNames),
+    "Population {} not found in FreqSum".format(args.outgroup)
 
 def getMissingness(afDict):
-    missing=0
+    missing = 0
+    total = 0
     for x in RightPops:
-        if afDict[x]==-1:
-            missing+=freqSumParser.sizes[x]
-    return float(missing) / float(sum(freqSumParser.sizes.values()))
+        n = freqSumParser.sizes[x]
+        if afDict[x] == -1:
+            missing += n
+        total += n
+    return float(missing) / float(total)
 
 def isTransition(ref, alt):
-    Transitions = {"A":"G", "G":"A","C":"T","T":"C"}
+    Transitions = {"A":"G", "G":"A", "C":"T", "T":"C"}
     return (ref in Transitions and alt == Transitions[ref])
 
-def getTotalMinorAF(afDict):
+def getTotalDerivedAC(afDict):
     #Calculate AfSum for each position
-    NonRefAfSum = 0
-    TotalCount = 0
+    nonRefAC = 0
+    totalCount = 0
     for pop in RightPops:
-        if afDict[pop] > 0:
-            NonRefAfSum += afDict[pop]
-            TotalCount += freqSumParser.sizes[pop]
-    outgroupFreq = 0.0 if args.outgroup == None else afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
-    minorAfSum = NonRefAfSum if outgroupFreq < 0.5 else TotalCount - NonRefAfSum
-    return minorAfSum
+        if afDict[pop] >= 0:
+            nonRefAC += afDict[pop]
+            totalCount += freqSumParser.sizes[pop]
+    xOutgroup = afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
+    if xOutgroup < 0.5:
+        return nonRefAC
+    else:
+        return totalCount - nonRefAC
 
 # Bin minAF - 1: Total rare allele sharing
 # Bins minAF -> maxAF: Rare Allele sharing per allele count
@@ -97,24 +104,27 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
     if args.NoTransitions and isTransition(Ref, Alt):
         continue 
     
-    AfSum = getTotalMinorAF(afDict)
+    if afDict[args.outgroup] < 0:
+        continue
+    
+    derivedAC = getTotalDerivedAC(afDict)
 
     for Lftidx, leftPop in enumerate(LeftPops):
         for Rgtidx, rightPop in enumerate(RightPops):
                         
             #Only consider Privately shared sites when the --Private option is provided.
-            isPrivate = (AfSum == afDict[rightPop])
-            leftSize=freqSumParser.sizes[leftPop]
-            rightSize=freqSumParser.sizes[rightPop]
+            isPrivate = (nonRefAC == afDict[rightPop])
+            leftSize = freqSumParser.sizes[leftPop]
+            rightSize = freqSumParser.sizes[rightPop]
             
             if afDict[leftPop] >= 0 and afDict[rightPop] >= 0:
                 mj[Lftidx][Rgtidx][Chrom] += 1
                 xLeft = afDict[leftPop] / leftSize
                 xRight = afDict[rightPop] / rightSize
-                xOutgroup = 0.0 if args.outgroup == None else afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
+                xOutgroup = afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
                 add = (xLeft - xOutgroup) * (xRight - xOutgroup)
                 RAS[Lftidx][Rgtidx][maxAF+1][Chrom] += add # For Outgroup F3 Stats
-                if AfSum >= minAF and AfSum <= maxAF and (not args.Private or isPrivate):
+                if derivedAC >= minAF and derivedAC <= maxAF and (not args.Private or isPrivate):
                     
                     # For rare allele sharing, we are rounding the outgroup to 1 or 0, since we noticed that sequencing errors and spurious DNA damage can cause negative ras statistics when the same formula is used as for F3 stats. To see this, consider the following case: xOutgroup > 0, xLeft = 1 (sequencing error or DNA damage), rRight = 0. Then add < 0 and in some cases the entire statistics will be zero. For F3 stats, this effect will average out, but for low frequency RAS the total effect can systematically shift the statistics towards negative numbers.
                     
