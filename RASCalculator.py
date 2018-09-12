@@ -20,6 +20,7 @@ parser.add_argument("-NT", "--NoTransitions", action='store_true', help="When pr
 parser.add_argument("-P", "--Private", action='store_true', required=False, help="Restrict the RAS calculation to privately shared rare variants only.")
 parser.add_argument("-C", "--NrChroms", type=int, metavar="<INT>", default=22, required=False, help="The number of chromosomes in the dataset. [22]")
 parser.add_argument("-d", "--details", action='store_true', help="Print RAS calculations for each allele frequency, in addition to the total.")
+parser.add_argument("--f3FreqCutoff", type=float, metavar="<FREQ>", default=0.05, help="minimum minor allele frequency for f3 values. Defaults to 0.05. This is recommended to skip rare mutations and reduce the sensitivity of the F3 statistics on sequencing errors and DNA damage.")
 args = parser.parse_args()
 
 if args.minAF<1:
@@ -90,6 +91,8 @@ RAS = [[[[0 for i in range(NumBins)] for j in range(maxAF+2)] for k in range(len
 # The normalization only records a total for all allele frequencies.
 mj =  [[ [0 for i in range(NumBins)]                          for k in range(len(RightPops))] for x in range(len(LeftPops))]
 
+
+totalRightPopSize = sum(freqSumParser.sizes[p] for p in RightPops)
 lineCount = 0
 for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
 
@@ -108,6 +111,8 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
         continue
     
     derivedAC = getTotalDerivedAC(afDict)
+    derivedAlleleFreq = derivedAC / totalRightPopSize
+    minorAlleleFreq = derivedAlleleFreq if derivedAlleleFreq < 0.5 else 1.0 - derivedAlleleFreq
 
     for Lftidx, leftPop in enumerate(LeftPops):
         for Rgtidx, rightPop in enumerate(RightPops):
@@ -123,7 +128,8 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                 xRight = afDict[rightPop] / rightSize
                 xOutgroup = afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
                 add = (xLeft - xOutgroup) * (xRight - xOutgroup)
-                RAS[Lftidx][Rgtidx][maxAF+1][Chrom] += add # For Outgroup F3 Stats
+                if minorAlleleFreq >= args.f3FreqCutoff:
+                    RAS[Lftidx][Rgtidx][maxAF+1][Chrom] += add # For Outgroup F3 Stats
                 if derivedAC >= minAF and derivedAC <= maxAF and (not args.Private or isPrivate):
                     
                     # For rare allele sharing, we are rounding the outgroup to 1 or 0, since we noticed that sequencing errors and spurious DNA damage can cause negative ras statistics when the same formula is used as for F3 stats. To see this, consider the following case: xOutgroup > 0, xLeft = 1 (sequencing error or DNA damage), rRight = 0. Then add < 0 and in some cases the entire statistics will be zero. For F3 stats, this effect will average out, but for low frequency RAS the total effect can systematically shift the statistics towards negative numbers.
