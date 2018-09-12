@@ -53,8 +53,7 @@ for x in LeftPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
 for x in RightPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
-assert (args.outgroup in freqSumParser.popNames),
-    "Population {} not found in FreqSum".format(args.outgroup)
+assert (args.outgroup in freqSumParser.popNames), "Population {} not found in FreqSum".format(args.outgroup)
 
 def getMissingness(afDict):
     missing = 0
@@ -118,7 +117,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
         for Rgtidx, rightPop in enumerate(RightPops):
                         
             #Only consider Privately shared sites when the --Private option is provided.
-            isPrivate = (nonRefAC == afDict[rightPop])
+            isPrivate = (derivedAC == afDict[rightPop])
             leftSize = freqSumParser.sizes[leftPop]
             rightSize = freqSumParser.sizes[rightPop]
             
@@ -136,7 +135,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                     
                     add = xLeft * xRight if xOutgroup < 0.5 else (1.0 - xLeft) * (1.0 - xRight)
                     #Only consider sites with ascertained minor AF between the provided ranges.
-                    RAS[Lftidx][Rgtidx][AfSum][Chrom] += add
+                    RAS[Lftidx][Rgtidx][derivedAC][Chrom] += add
                     #within "minAF-1" we store total Rare allele sharing.
                     RAS[Lftidx][Rgtidx][minAF-1][Chrom] += add
 
