@@ -14,11 +14,11 @@ parser.add_argument("-o", "--outgroup", metavar="POP", type=str, help="The outgr
 parser.add_argument("-M", "--maxAF", metavar="<MAX ALLELE COUNT>", type=int, default=10, help="The maximum number of alleles (total) in the reference populations. The default maximum allele value is 10.", required=False)
 parser.add_argument("-m", "--minAF", metavar="<MIN ALLELE COUNT>", type=int, default=2, help="The minimum number of alleles (total) in the reference populations. The default minimum allele count is 2.", required=False)
 
-parser.add_argument("-a", "--ascertainIn", type=str, metavar="POP1,POP2,...", required=False, help="The populations to ascertain in. Rare alleles will be defined as alleles with minor allele freuency between <minAF> and <maxAF> in this set of populations. By default, all non-Left populations will be used for ascertainment.")
+parser.add_argument("-a", "--ascertainIn", type=str, metavar="POP1,POP2,...", required=False, help="The populations to ascertain in (i.e. Rights). Rare alleles will be defined as alleles with minor allele freuency between <minAF> and <maxAF> in this set of populations. By default, all non-Left populations will be used for ascertainment.")
 parser.add_argument("-c", "--calculateFor", type=str, metavar="POP1,POP2,...", required=True, help="The populations to be used in RAS calculations. RAS will be calculated between each Test population and each of these populations. By default, RAS will be calculated for all non-Left populations.")
 
 
-parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Test populations/individuals. RAS will be calculated between the Test and all Right populations.")
+parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Test populations/individuals. RAS will be calculated between each Test and all populations in the calculation list.")
 # parser.add_argument("-R", "--RightPops", type=str, metavar="POP1,POP2,...", required=False, help="A list of comma-separated population names that should be considered when computing the allele frequency. Consider all populations if not provided.")
 
 parser.add_argument("-x", "--MissingnessCutoff", type=float, metavar="<CUTOFF>", default=0.0, help="Missingness cutoff proportion for Right populations. E.g. 0.1: If more than 10%% of individuals in Right populations show missing data, the variant will be ignored. [default=0]")
@@ -160,12 +160,14 @@ for x in range(len(LeftPops)):
 
 # print ("#FREQSUM POPULATIONS & SIZES:",*Pops, file=args.Output, sep=" ", end="\n")
 print ("#Left Populations: ", *LeftPops, sep=" ", file=args.Output, end="\n")
-print ("#Test Populations: ", *TestPops, sep=" ", file=args.Output, end="\n")
+print ("#Tested Populations: ", *TestPops, sep=" ", file=args.Output, end="\n")
 print ("#Populations considered for allele frequency calculation (Rights):", *RightPops, file=args.Output, sep="\t", end="\n")
 # RAS, number of sites, RAS /Site, stderr of (RAS/site), Allele Freq
 print("TestPop","LeftPop","RAS","Number of sites","RAS/site JK Estimate", "Jackknife Error", "Allele Frequency", sep="\t", file=args.Output)
 for leftidx, leftPop in enumerate(LeftPops):
     for tstidx, testPop in enumerate(TestPops):
+        if testPop == leftPop:
+            continue
         if args.details:
             for m in range(minAF,maxAF+1):
                 print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj[leftidx][tstidx])), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),m, sep="\t", file=args.Output)
