@@ -166,8 +166,6 @@ print ("#Populations considered for allele frequency calculation (Rights):", *Ri
 print("TestPop","LeftPop","RAS","Number of sites","RAS/site JK Estimate", "Jackknife Error", "Allele Frequency", sep="\t", file=args.Output)
 for leftidx, leftPop in enumerate(LeftPops):
     for tstidx, testPop in enumerate(TestPops):
-        if testPop == leftPop:
-            continue
         if args.details:
             for m in range(minAF,maxAF+1):
                 print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj[leftidx][tstidx])), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),m, sep="\t", file=args.Output)
