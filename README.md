@@ -3,7 +3,7 @@ A toolset to calculate Rare Allele Sharing (RAS).
 
 The input files should be in FreqSum format. The FreqSum format and various tools for working with this format are documented in https://github.com/stschiff/rarecoal-tools.
 
-# Using `RASCalculator.py`
+# Using RASCalculator
 * The input FreqSum file can be input using the option `-I`, or as stdin by 
 	directly piping the FreqSum to `RASCalculator.py` and omitting this 
 	option.
