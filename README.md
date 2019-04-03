@@ -8,6 +8,9 @@ The input files should be in FreqSum format. The FreqSum format and various tool
 	directly piping the FreqSum to `RASCalculator.py` and omitting this 
 	option.
 * The output file is defined using the `-O` option.
+* The outgroup with which all alleles should be polarised is defined with the 
+	`--outgroup` option. This is also the outgroup used for F3 
+	calculations. We suggest using Chimp in most cases.
 * The maximum allele frequency for the non-Reference allele in can be changed 
 	with the `-M` option (default is 10).
 * By default, the minimum allele frequency of the non-reference allele is 2, 
