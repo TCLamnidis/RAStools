@@ -15,10 +15,10 @@ parser.add_argument("-M", "--maxAF", metavar="<MAX ALLELE COUNT>", type=int, def
 parser.add_argument("-m", "--minAF", metavar="<MIN ALLELE COUNT>", type=int, default=2, help="The minimum number of alleles (total) in the reference populations. The default minimum allele count is 2.", required=False)
 
 parser.add_argument("-a", "--ascertainIn", type=str, metavar="POP1,POP2,...", required=False, help="The populations to ascertain in (i.e. Rights). Rare alleles will be defined as alleles with minor allele freuency between <minAF> and <maxAF> in this set of populations. By default, all non-Left populations will be used for ascertainment.")
-parser.add_argument("-c", "--calculateFor", type=str, metavar="POP1,POP2,...", required=True, help="The populations to be used in RAS calculations. RAS will be calculated between each Test population and each of these populations. By default, RAS will be calculated for all non-Left populations.")
+parser.add_argument("-c", "--calculateFor", type=str, metavar="POP1,POP2,...", required=True, help="The populations to be used in RAS calculations. RAS will be calculated between each Left population and each of these populations. By default, RAS will be calculated for all non-Left populations.")
 
 
-parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Test populations/individuals. RAS will be calculated between each Test and all populations in the calculation list.")
+parser.add_argument("-L", "--LeftPops", type=str, metavar="POP1,POP2,...", required=True, help="Set the Left populations/individuals. RAS will be calculated between each Left and all populations in the calculation list.")
 # parser.add_argument("-R", "--RightPops", type=str, metavar="POP1,POP2,...", required=False, help="A list of comma-separated population names that should be considered when computing the allele frequency. Consider all populations if not provided.")
 
 parser.add_argument("-x", "--MissingnessCutoff", type=float, metavar="<CUTOFF>", default=0.0, help="Missingness cutoff proportion for Right populations. E.g. 0.1: If more than 10%% of individuals in Right populations show missing data, the variant will be ignored. [default=0]")
