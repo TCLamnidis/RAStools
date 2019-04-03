@@ -78,12 +78,13 @@ optional arguments:
                         ascertainment.
   -c POP1,POP2,..., --calculateFor POP1,POP2,...
                         The populations to be used in RAS calculations. RAS
-                        will be calculated between each Test population and
+                        will be calculated between each Left population and
                         each of these populations. By default, RAS will be
                         calculated for all non-Left populations.
   -L POP1,POP2,..., --LeftPops POP1,POP2,...
-                        Set the Test populations/individuals. RAS will be
-                        calculated between the Test and all Right populations.
+                        Set the Left populations/individuals. RAS will be 
+			calculated between each Left and all populations in 
+			the calculation list.
   -x <CUTOFF>, --MissingnessCutoff <CUTOFF>
                         Missingness cutoff proportion for Right populations.
                         E.g. 0.1: If more than 10% of individuals in Right
