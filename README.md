@@ -108,7 +108,7 @@ optional arguments:
 
 The first two lines of a RAS output start with a `#` and contain the populations and sizes of the populations in the input FreqSum, and the population information about that run. 
 
-    #Available populations in Input File and their respective sizes: {'PopA': 8, 'PopB': 14, 'PopC': 14, 'PopD': 28, 'PopE': 20, 'PopF': 24, 'PopG': 24, 'Ind1': 2, 'Ind2': 2, 'Ind3': 2, 'Ind4': 2, 'Ind5': 2, 'Chimp': }
+    #Available populations in Input File and their respective sizes: {'PopA': 8, 'PopB': 14, 'PopC': 14, 'PopD': 28, 'PopE': 20, 'PopF': 24, 'PopG': 24, 'Ind1': 2, 'Ind2': 2, 'Ind3': 2, 'Ind4': 2, 'Ind5': 2, 'Chimp': 2}
     #Left Populations:  Ind1 Ind2 Ind3
     #Test Populations:  PopA PopB PopC PopD
     #Populations considered for allele frequency calculation (Rights):	PopA	PopB	PopD	PopE	PopF
