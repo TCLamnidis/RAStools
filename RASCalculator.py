@@ -168,7 +168,7 @@ for x in range(len(LeftPops)):
 print ("#Left Populations: ", *LeftPops, sep=" ", file=args.Output, end="\n")
 print ("#Tested Populations: ", *TestPops, sep=" ", file=args.Output, end="\n")
 print ("#Populations considered for allele frequency calculation (Rights):", *RightPops, file=args.Output, sep="\t", end="\n")
-print ("#Outgroup: ", args.outgroup, file=args.Outgroup, sep="\t", end="\n")
+print ("#Outgroup: ", args.outgroup, file=args.Output, sep="\t", end="\n")
 # RAS, number of sites, RAS /Site, stderr of (RAS/site), Allele Freq
 print("TestPop","LeftPop","RAS","Number of sites","RAS/site JK Estimate", "Jackknife Error", "Allele Frequency", sep="\t", file=args.Output)
 for leftidx, leftPop in enumerate(LeftPops):
