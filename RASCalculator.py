@@ -97,8 +97,8 @@ def getTotalDerivedAC(afDict):
 # Bin maxAF + 1: Outgroup F3 stats
 RAS = [[[[0 for i in range(NumBins)] for j in range(maxAF+2)] for k in range(len(TestPops))] for x in range(len(LeftPops))]
 # The normalization only records a total for all allele frequencies.
-mj =  [0 for i in range(NumBins)] ## Bin sizes are now stable across all RAS calculations.
-#[[ [0 for i in range(NumBins)]                          for k in range(len(TestPops))] for x in range(len(LeftPops))]
+blockSizes =  [0 for i in range(NumBins)] ## Bin sizes are now stable across all RAS calculations.
+mj =  [[ [0 for i in range(NumBins)]                          for k in range(len(TestPops))] for x in range(len(LeftPops))]
 
 
 totalRightPopSize = sum(freqSumParser.sizes[p] for p in RightPops)
@@ -114,7 +114,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
     if args.NoTransitions and isTransition(Ref, Alt):
         continue     
     
-    mj[Chrom] += 1
+    blockSizes[Chrom] += 1
     
     missingness = getMissingness(afDict)
     if missingness > args.MissingnessCutoff:
@@ -137,7 +137,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
             rightSize = freqSumParser.sizes[testPop]
             
             if afDict[leftPop] >= 0 and afDict[testPop] >= 0:
-                # mj[Lftidx][Tstidx][Chrom] += 1
+                mj[Lftidx][Tstidx][Chrom] += 1
                 xLeft = afDict[leftPop] / leftSize
                 xRight = afDict[testPop] / rightSize
                 xOutgroup = afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
@@ -160,9 +160,9 @@ Sigma2=[[[0 for j in range(maxAF+2)] for k in range(len(TestPops))] for x in ran
 for x in range(len(LeftPops)):
     for j in range(len(TestPops)):
         for i in range(minAF-1,maxAF+2):
-            thetaJ,sigma2=ras.getJackknife(RAS[x][j][i],mj)
-            ThetaJ[x][j][i]=thetaJ
-            Sigma2[x][j][i]=sigma2
+            thetaJ,sigma2 = ras.getJackknife(RAS[x][j][i], mj[x][j], blockSizes)
+            ThetaJ[x][j][i] = thetaJ
+            Sigma2[x][j][i] = sigma2
 
 # print ("#FREQSUM POPULATIONS & SIZES:",*Pops, file=args.Output, sep=" ", end="\n")
 print ("#Left Populations: ", *LeftPops, sep=" ", file=args.Output, end="\n")
@@ -170,16 +170,16 @@ print ("#Tested Populations: ", *TestPops, sep=" ", file=args.Output, end="\n")
 print ("#Populations considered for allele frequency calculation (Rights):", *RightPops, file=args.Output, sep="\t", end="\n")
 print ("#Outgroup: ", args.outgroup, file=args.Output, sep="\t", end="\n")
 # RAS, number of sites, RAS /Site, stderr of (RAS/site), Allele Freq
-print("TestPop","LeftPop","RAS","Number of sites","RAS/site JK Estimate", "Jackknife Error", "Allele Frequency", sep="\t", file=args.Output)
+print("TestPop","LeftPop","RAS","NumSites","RAS/site", "Error", "AlleleCount", sep="\t", file=args.Output)
 for leftidx, leftPop in enumerate(LeftPops):
     for tstidx, testPop in enumerate(TestPops):
         if args.details:
             for m in range(minAF,maxAF+1):
-                print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj)), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),m, sep="\t", file=args.Output)
+                print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj[leftidx][tstidx])), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),m, sep="\t", file=args.Output)
         m=minAF-1
-        print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj)), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),"Total [{},{}]".format(minAF,maxAF), sep="\t", file=args.Output)
+        print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj[leftidx][tstidx])), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),"Total [{},{}]".format(minAF,maxAF), sep="\t", file=args.Output)
         m=maxAF+1
-        print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj)), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),"Outgroup F3", sep="\t", file=args.Output)
+        print (testPop, leftPop, "{:.5}".format(float(sum(RAS[leftidx][tstidx][m]))), "{:.15e}".format(sum(mj[leftidx][tstidx])), "{:.15e}".format(ThetaJ[leftidx][tstidx][m]), "{:.15e}".format(sqrt(Sigma2[leftidx][tstidx][m])),"Outgroup F3", sep="\t", file=args.Output)
         #print ("", file=args.Output)
 
 print ("Program finished running at:", strftime("%D %H:%M:%S"), file=sys.stderr)
