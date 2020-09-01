@@ -40,31 +40,35 @@ class FreqSumParser:
             self.sizes[popName] = popSize
         print("#Available populations in Input File and their respective sizes: ", self.sizes, file=self.output)
 
-def getJackknife(blockValues, totalObservations, blockSizes):
+def getJackknife(blockValues, totalObservations, blockSizes, skipJackknife):
     thetaminus=[0 for x in range(len(blockSizes))]
     sum1=0
     sum2=0
     jackknifeStdErr=0
     if sum(totalObservations)==0:
+        ## If no observations were made, the rare allele sharing rate is 0.
         thetahat=0
     else:
+        ## thetahat is normalised by number of observations
         thetahat=sum(blockValues)/sum(totalObservations)
-    
-    ## Normalise blockValues.
-    normalisedValues = [0.0 for c in range(len(blockSizes))]
+
     for c in range(len(blockSizes)):
-        if totalObservations[c] == 0:
-            continue
+        if totalObservations[c] == sum(totalObservations):
+            ## If all rare alleles are on a single chunk, the ras/site without that chunk is 0.
+            thetaminus[c]=0
         else:
-            normalisedValues[c] = blockValues[c]/totalObservations[c]
-    
-    for c in range(len(blockSizes)):
-        thetaminus[c]=( (sum(blockValues)-blockValues[c]) / (sum(totalObservations)-totalObservations[c]) )
+            ## thetaminus is normalised by number of observations
+            thetaminus[c]=( (sum(blockValues)-blockValues[c]) / (sum(totalObservations)-totalObservations[c]) )
+        
+        ## Jackknife estimator calculation
         sum1+=thetahat-thetaminus[c]
         sum2+=(blockSizes[c]*thetaminus[c])/sum(blockSizes)
     jackknifeEstimator=sum1+sum2
-    for c in range(len(blockSizes)):
-        hj=sum(blockSizes)/blockSizes[c]
-        pseudoval = (hj*thetahat)-((hj-1)*thetaminus[c])
-        jackknifeStdErr+=(1/len(blockSizes))*(((pseudoval-jackknifeEstimator)**2)/(hj-1))
+    
+    ## Standard error calculation
+    if not skipJackknife:
+        for c in range(len(blockSizes)):
+            hj=sum(blockSizes)/blockSizes[c]
+            pseudoval = (hj*thetahat)-((hj-1)*thetaminus[c])
+            jackknifeStdErr+=(1/len(blockSizes))*(((pseudoval-jackknifeEstimator)**2)/(hj-1))
     return (jackknifeEstimator,jackknifeStdErr)

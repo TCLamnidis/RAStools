@@ -27,6 +27,7 @@ parser.add_argument("-P", "--Private", action='store_true', required=False, help
 parser.add_argument("-C", "--NrChroms", type=int, metavar="<INT>", default=22, required=False, help="The number of chromosomes in the dataset. [22]")
 parser.add_argument("-d", "--details", action='store_true', help="Print RAS calculations for each allele frequency, in addition to the total.")
 parser.add_argument("--f3FreqCutoff", type=float, metavar="<FREQ>", default=0.05, help="minimum minor allele frequency for f3 values. Defaults to 0.05. This is recommended to skip rare mutations and reduce the sensitivity of the F3 statistics on sequencing errors and DNA damage.")
+parser.add_argument("--skipJackknife", action='store_true', default=False, help="When provided, the jackknife error is not estimated, but instead set to 0. [False]")
 args = parser.parse_args()
 
 if args.minAF<1:
@@ -42,6 +43,8 @@ if args.Output == None:
 NumBins=args.NrChroms
 minAF=args.minAF
 maxAF=args.maxAF
+skipJK=args.skipJackknife
+
 # RightIndex={} #Holds the INDICES of the Right pops
 # LeftsIndex={} #Holds the INDICES of the Left pops
 
@@ -160,7 +163,7 @@ Sigma2=[[[0 for j in range(maxAF+2)] for k in range(len(TestPops))] for x in ran
 for x in range(len(LeftPops)):
     for j in range(len(TestPops)):
         for i in range(minAF-1,maxAF+2):
-            thetaJ,sigma2 = ras.getJackknife(RAS[x][j][i], mj[x][j], blockSizes)
+            thetaJ,sigma2 = ras.getJackknife(RAS[x][j][i], mj[x][j], blockSizes, skipJK)
             ThetaJ[x][j][i] = thetaJ
             Sigma2[x][j][i] = sigma2
 
