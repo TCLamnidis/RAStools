@@ -10,7 +10,7 @@ import RASUtils as ras
 parser = argparse.ArgumentParser(description="Compute rare allele sharing statistics between two populations with respect to an outgroup, as well as outgroup F3 statistics. Also preforms error estimation using jackknifing, using the number of observed sites for normalisation.")
 parser.add_argument("-I", "--Input", metavar="<INPUT FILE>", type=argparse.FileType('r'), help="The input freqsum file. Omit to read from stdin.", required=False)
 parser.add_argument("-O", "--Output", metavar="<OUTPUT FILE>", type=argparse.FileType('w'), help="The output file. Omit to print in stdout.")
-parser.add_argument("-o", "--outgroup", metavar="POP", type=str, help="The outgroup to polarize all alleles with. As a useful standard choice, use Chimp as outgroup", required=True)
+parser.add_argument("-o", "--outgroup", metavar="POP", type=str, help="The outgroup to polarize all alleles with. As a useful standard choice, use Chimp as outgroup")
 parser.add_argument("-M", "--maxAF", metavar="<MAX ALLELE COUNT>", type=int, default=10, help="The maximum number of alleles (total) in the reference populations. The default maximum allele value is 10.", required=False)
 parser.add_argument("-m", "--minAF", metavar="<MIN ALLELE COUNT>", type=int, default=2, help="The minimum number of alleles (total) in the reference populations. The default minimum allele count is 2.", required=False)
 
@@ -65,7 +65,7 @@ for x in RightPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
 for x in TestPops:
     assert (x in freqSumParser.popNames), "Population {} not found in FreqSum".format(x)
-assert (args.outgroup in freqSumParser.popNames), "Population {} not found in FreqSum".format(args.outgroup)
+assert (args.outgroup is None or args.outgroup in freqSumParser.popNames), "Population {} not found in FreqSum".format(args.outgroup)
 
 def getMissingness(afDict):
     missing = 0
@@ -89,7 +89,7 @@ def getTotalDerivedAC(afDict):
         if afDict[pop] >= 0:
             nonRefAC += afDict[pop]
             totalCount += freqSumParser.sizes[pop]
-    xOutgroup = afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
+    xOutgroup = 0.0 if args.outgroup is None else afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
     if xOutgroup < 0.5:
         return nonRefAC
     else:
@@ -123,7 +123,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
     if missingness > args.MissingnessCutoff:
         continue
     
-    if afDict[args.outgroup] < 0:
+    if args.outgroup is not None and afDict[args.outgroup] < 0:
         continue
     
     
@@ -143,7 +143,7 @@ for (Chrom, Pos, Ref, Alt, afDict) in freqSumParser:
                 mj[Lftidx][Tstidx][Chrom] += 1
                 xLeft = afDict[leftPop] / leftSize
                 xRight = afDict[testPop] / rightSize
-                xOutgroup = afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
+                xOutgroup = 0.0 if args.outgroup is None else afDict[args.outgroup] / freqSumParser.sizes[args.outgroup]
                 add = (xLeft - xOutgroup) * (xRight - xOutgroup)
                 if minorAlleleFreq >= args.f3FreqCutoff:
                     RAS[Lftidx][Tstidx][maxAF+1][Chrom] += add # For Outgroup F3 Stats
